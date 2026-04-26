@@ -24,6 +24,15 @@ const feedbackToneClasses = {
 const DAILY_PROGRESS_STORAGE_KEY = "oddible-daily-progress";
 const DEFAULT_DATE_KEY = "1970-01-01";
 const CHALLENGE_DATE_KEY_SEPARATOR = "::";
+const FEEDBACK_SOUND_PATHS = {
+  correct: "/sounds/correct.mp3",
+  incorrect: "/sounds/incorrect.mp3"
+};
+const STREAK_STORAGE_KEY = "oddible-streak-progress";
+const STREAK_OUTCOMES = {
+  lost: "lost",
+  won: "won"
+};
 
 function getTimeUntilNextMidnight(now = new Date()) {
   const nextMidnight = new Date(now);
@@ -46,6 +55,41 @@ function getTodayDateKey(date = new Date()) {
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(dateKey) {
+  if (typeof dateKey !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+    return null;
+  }
+
+  const [year, month, day] = dateKey.split("-").map((value) => Number.parseInt(value, 10));
+  const parsedDate = new Date(year, month - 1, day);
+
+  if (
+    Number.isNaN(parsedDate.getTime()) ||
+    parsedDate.getFullYear() !== year ||
+    parsedDate.getMonth() !== month - 1 ||
+    parsedDate.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsedDate;
+}
+
+function shiftDateKey(dateKey, dayOffset) {
+  const parsedDate = parseDateKey(dateKey);
+
+  if (!parsedDate) {
+    return null;
+  }
+
+  parsedDate.setDate(parsedDate.getDate() + dayOffset);
+  return getTodayDateKey(parsedDate);
+}
+
+function getPreviousDateKey(dateKey) {
+  return shiftDateKey(dateKey, -1);
 }
 
 function getDateSeed(dateKey) {
@@ -130,6 +174,109 @@ function createFreshDailyProgress(dateKey, instruments, effects) {
     dateKey,
     failed: false,
     won: false
+  };
+}
+
+function createFreshStreakProgress() {
+  return {
+    bestStreak: 0,
+    completedToday: false,
+    currentStreak: 0,
+    lastCompletedDateKey: null,
+    lastCompletedOutcome: null,
+    lastSolvedDateKey: null
+  };
+}
+
+function normalizeStreakProgress(savedStreakProgress, todayDateKey) {
+  const safeCurrentStreak = Number.isFinite(savedStreakProgress?.currentStreak)
+    ? Math.max(Math.floor(savedStreakProgress.currentStreak), 0)
+    : 0;
+  const safeBestStreak = Number.isFinite(savedStreakProgress?.bestStreak)
+    ? Math.max(Math.floor(savedStreakProgress.bestStreak), 0)
+    : 0;
+  const lastSolvedDateKey = parseDateKey(savedStreakProgress?.lastSolvedDateKey)
+    ? savedStreakProgress.lastSolvedDateKey
+    : null;
+  const lastCompletedDateKey = parseDateKey(savedStreakProgress?.lastCompletedDateKey)
+    ? savedStreakProgress.lastCompletedDateKey
+    : null;
+  const lastCompletedOutcome =
+    savedStreakProgress?.lastCompletedOutcome === STREAK_OUTCOMES.won ||
+    savedStreakProgress?.lastCompletedOutcome === STREAK_OUTCOMES.lost
+      ? savedStreakProgress.lastCompletedOutcome
+      : null;
+  const previousDateKey = getPreviousDateKey(todayDateKey);
+  const completedToday = lastCompletedDateKey === todayDateKey;
+  const currentStreak =
+    completedToday || (previousDateKey && lastSolvedDateKey === previousDateKey)
+      ? safeCurrentStreak
+      : 0;
+
+  return {
+    bestStreak: Math.max(safeBestStreak, safeCurrentStreak),
+    completedToday,
+    currentStreak,
+    lastCompletedDateKey,
+    lastCompletedOutcome,
+    lastSolvedDateKey
+  };
+}
+
+function loadStreakProgress(dateKey) {
+  const freshStreakProgress = createFreshStreakProgress();
+
+  if (typeof window === "undefined") {
+    return freshStreakProgress;
+  }
+
+  try {
+    const rawStreakProgress = window.localStorage.getItem(STREAK_STORAGE_KEY);
+
+    if (!rawStreakProgress) {
+      return freshStreakProgress;
+    }
+
+    return normalizeStreakProgress(JSON.parse(rawStreakProgress), dateKey);
+  } catch {
+    return freshStreakProgress;
+  }
+}
+
+function applyResultToStreakProgress(streakProgress, dateKey, outcome) {
+  const normalizedStreakProgress = normalizeStreakProgress(streakProgress, dateKey);
+
+  if (
+    normalizedStreakProgress.completedToday &&
+    normalizedStreakProgress.lastCompletedDateKey === dateKey
+  ) {
+    return normalizedStreakProgress;
+  }
+
+  if (outcome === STREAK_OUTCOMES.won) {
+    const previousDateKey = getPreviousDateKey(dateKey);
+    const currentStreak =
+      previousDateKey && normalizedStreakProgress.lastSolvedDateKey === previousDateKey
+        ? normalizedStreakProgress.currentStreak + 1
+        : 1;
+
+    return {
+      ...normalizedStreakProgress,
+      bestStreak: Math.max(normalizedStreakProgress.bestStreak, currentStreak),
+      completedToday: true,
+      currentStreak,
+      lastCompletedDateKey: dateKey,
+      lastCompletedOutcome: STREAK_OUTCOMES.won,
+      lastSolvedDateKey: dateKey
+    };
+  }
+
+  return {
+    ...normalizedStreakProgress,
+    completedToday: true,
+    currentStreak: 0,
+    lastCompletedDateKey: dateKey,
+    lastCompletedOutcome: STREAK_OUTCOMES.lost
   };
 }
 
@@ -235,6 +382,7 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
   const [dailyProgress, setDailyProgress] = useState(() =>
     createFreshDailyProgress(buildChallengeDateKey(DEFAULT_DATE_KEY), instruments, effects)
   );
+  const [streakProgress, setStreakProgress] = useState(() => createFreshStreakProgress());
   const [hasHydrated, setHasHydrated] = useState(false);
   const [countdown, setCountdown] = useState("00:00:00");
   const [feedbackPulse, setFeedbackPulse] = useState(false);
@@ -242,8 +390,11 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
   const dailyProgressRef = useRef(dailyProgress);
   const hasHydratedRef = useRef(false);
   const mysteryAudioRef = useRef(null);
+  const correctFeedbackAudioRef = useRef(null);
+  const incorrectFeedbackAudioRef = useRef(null);
   const loadedSoundPathRef = useRef(null);
   const autoPlayedDateKeyRef = useRef(null);
+  const submitInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!feedbackPulse) {
@@ -286,9 +437,11 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
         effects,
         challenge.maxAttempts
       );
+      const nextStreakProgress = loadStreakProgress(todayDateKey);
 
       dailyProgressRef.current = nextDailyProgress;
       setDailyProgress(nextDailyProgress);
+      setStreakProgress(nextStreakProgress);
       setSelectedInstrument(null);
       setSelectedEffect(null);
       setFeedbackPulse(false);
@@ -342,14 +495,63 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
     );
   }, [dailyProgress, hasHydrated]);
 
+  useEffect(() => {
+    if (!hasHydrated || typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(streakProgress));
+  }, [hasHydrated, streakProgress]);
+
   const getManagedAudio = () => {
     const audio = getPreviewAudio(mysteryAudioRef);
     audio.preload = "auto";
     return audio;
   };
 
+  const getFeedbackAudio = (audioRef, source) => {
+    const audio = getPreviewAudio(audioRef);
+    audio.preload = "auto";
+
+    if (!audio.src || !audio.src.endsWith(source)) {
+      audio.src = source;
+    }
+
+    return audio;
+  };
+
+  const stopFeedbackSound = () => {
+    stopSoundPlayback(correctFeedbackAudioRef.current);
+    stopSoundPlayback(incorrectFeedbackAudioRef.current);
+  };
+
   const stopMysterySound = () => {
     stopSoundPlayback(mysteryAudioRef.current);
+  };
+
+  const playSubmitFeedbackSound = async (isCorrectGuess) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const source = isCorrectGuess
+      ? FEEDBACK_SOUND_PATHS.correct
+      : FEEDBACK_SOUND_PATHS.incorrect;
+    const audio = isCorrectGuess
+      ? getFeedbackAudio(correctFeedbackAudioRef, source)
+      : getFeedbackAudio(incorrectFeedbackAudioRef, source);
+
+    stopMysterySound();
+    stopFeedbackSound();
+    audio.currentTime = 0;
+
+    try {
+      await audio.play();
+    } catch (error) {
+      if (error?.name !== "AbortError" && error?.name !== "NotAllowedError") {
+        console.warn("Submit feedback sound could not be played", error);
+      }
+    }
   };
 
   const playMysterySound = async ({ restart = true } = {}) => {
@@ -360,6 +562,7 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
     const audio = getManagedAudio();
     const shouldReloadSound = loadedSoundPathRef.current !== mysterySound.path;
 
+    stopFeedbackSound();
     stopSoundPlayback(audio);
 
     if (shouldReloadSound) {
@@ -379,6 +582,30 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
       }
     }
   };
+
+  useEffect(() => {
+    const correctAudio = getPreviewAudio(correctFeedbackAudioRef);
+    correctAudio.preload = "auto";
+
+    if (!correctAudio.src || !correctAudio.src.endsWith(FEEDBACK_SOUND_PATHS.correct)) {
+      correctAudio.src = FEEDBACK_SOUND_PATHS.correct;
+    }
+
+    const incorrectAudio = getPreviewAudio(incorrectFeedbackAudioRef);
+    incorrectAudio.preload = "auto";
+
+    if (!incorrectAudio.src || !incorrectAudio.src.endsWith(FEEDBACK_SOUND_PATHS.incorrect)) {
+      incorrectAudio.src = FEEDBACK_SOUND_PATHS.incorrect;
+    }
+
+    correctAudio.load();
+    incorrectAudio.load();
+
+    return () => {
+      stopSoundPlayback(correctFeedbackAudioRef.current);
+      stopSoundPlayback(incorrectFeedbackAudioRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -434,6 +661,22 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
     void playMysterySound({ restart: true });
   }, [dailyProgress.dateKey, hasHydrated, mysterySound]);
 
+  useEffect(() => {
+    if (!hasHydrated || (!dailyProgress.won && !dailyProgress.failed)) {
+      return;
+    }
+
+    const todayDateKey = parseChallengeDateKey(dailyProgress.dateKey).baseDateKey;
+
+    setStreakProgress((currentStreakProgress) =>
+      applyResultToStreakProgress(
+        currentStreakProgress,
+        todayDateKey,
+        dailyProgress.won ? STREAK_OUTCOMES.won : STREAK_OUTCOMES.lost
+      )
+    );
+  }, [dailyProgress.dateKey, dailyProgress.failed, dailyProgress.won, hasHydrated]);
+
   const attempts = dailyProgress.attempts;
   const attemptsUsed = attempts.length;
   const attemptsRemaining = Math.max(challenge.maxAttempts - attemptsUsed, 0);
@@ -453,10 +696,12 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
     setSelectedEffect(effect);
   };
 
-  const handleSubmit = () => {
-    if (!canSubmit) {
+  const handleSubmit = async () => {
+    if (!canSubmit || submitInFlightRef.current) {
       return;
     }
+
+    submitInFlightRef.current = true;
 
     const guess = {
       id: attemptsUsed + 1,
@@ -467,18 +712,37 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
     };
 
     guess.correct = guess.instrumentMatch && guess.effectMatch;
+    const todayDateKey = parseChallengeDateKey(dailyProgress.dateKey).baseDateKey;
+    const nextAttemptsCount = attemptsUsed + 1;
+    const isFinalLoss = !guess.correct && nextAttemptsCount >= challenge.maxAttempts;
     setFeedbackPulse(true);
 
-    setDailyProgress((currentProgress) => {
-      const nextAttempts = [...currentProgress.attempts, guess];
+    try {
+      await playSubmitFeedbackSound(guess.correct);
 
-      return {
-        ...currentProgress,
-        attempts: nextAttempts,
-        failed: !guess.correct && nextAttempts.length >= challenge.maxAttempts,
-        won: guess.correct
-      };
-    });
+      setDailyProgress((currentProgress) => {
+        const nextAttempts = [...currentProgress.attempts, guess];
+
+        return {
+          ...currentProgress,
+          attempts: nextAttempts,
+          failed: !guess.correct && nextAttempts.length >= challenge.maxAttempts,
+          won: guess.correct
+        };
+      });
+
+      if (guess.correct || isFinalLoss) {
+        setStreakProgress((currentStreakProgress) =>
+          applyResultToStreakProgress(
+            currentStreakProgress,
+            todayDateKey,
+            guess.correct ? STREAK_OUTCOMES.won : STREAK_OUTCOMES.lost
+          )
+        );
+      }
+    } finally {
+      submitInFlightRef.current = false;
+    }
   };
 
   const handleReset = () => {
@@ -549,8 +813,10 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
           <StatusStrip
             attemptsRemaining={attemptsRemaining}
             attemptsUsed={attemptsUsed}
+            bestStreak={streakProgress.bestStreak}
             comboLabel={challenge.comboLabel}
             countdown={countdown}
+            currentStreak={streakProgress.currentStreak}
             gameState={gameState}
             maxAttempts={challenge.maxAttempts}
           />

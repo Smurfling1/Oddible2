@@ -18,8 +18,10 @@ const statusMeta = {
 export function StatusStrip({
   attemptsRemaining,
   attemptsUsed,
+  bestStreak,
   comboLabel,
   countdown,
+  currentStreak,
   gameState,
   maxAttempts
 }) {
@@ -46,6 +48,27 @@ export function StatusStrip({
 
   return (
     <div className="mt-5 w-full sm:mt-6">
+      <div className="mb-2.5 flex flex-wrap items-center justify-center gap-2 sm:mb-3">
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/80 px-3 py-1.5 shadow-soft backdrop-blur">
+          <span className="h-2 w-2 rounded-full bg-[var(--accent-strong)]" />
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500 sm:text-[11px] sm:tracking-[0.24em]">
+            Current Streak
+          </span>
+          <span className="font-display text-lg font-black uppercase tracking-[0.08em] text-slate-950 sm:text-xl">
+            {currentStreak}
+          </span>
+        </div>
+
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/80 px-3 py-1.5 shadow-soft backdrop-blur">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500 sm:text-[11px] sm:tracking-[0.24em]">
+            Best Streak
+          </span>
+          <span className="font-display text-lg font-black uppercase tracking-[0.08em] text-slate-950 sm:text-xl">
+            {bestStreak}
+          </span>
+        </div>
+      </div>
+
       <div className="grid gap-2.5 sm:grid-cols-3 sm:gap-3">
         {cards.map((card) => (
           <div

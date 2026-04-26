@@ -52,9 +52,6 @@ export const ChoiceTile = forwardRef(function ChoiceTile(
       <div className="flex items-start justify-between gap-2.5 sm:gap-3">
         <div>
           <span className="block text-sm font-semibold leading-5 tracking-[0.02em] sm:text-[15px] sm:leading-5">{option.label}</span>
-          <span className="mt-1.5 block font-mono text-[10px] uppercase tracking-[0.2em] opacity-70 sm:mt-2 sm:text-[11px] sm:tracking-[0.24em]">
-            {option.hint}
-          </span>
         </div>
 
         <span

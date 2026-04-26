@@ -1,25 +1,24 @@
 export const instrumentOptions = [
-  { label: "Snare", hint: "Sharp snap" },
-  { label: "Kick", hint: "Low thump" },
-  { label: "Rack Tom", hint: "Mid punch" },
-  { label: "Floor Tom", hint: "Deep boom" },
-  { label: "Hi-Hat", hint: "Crisp tick" },
-  { label: "Crash Cymbal", hint: "Bright wash" },
-  { label: "Ride Cymbal", hint: "Bell shimmer" },
-  { label: "Guitar", hint: "String drive" },
-  { label: "Electric Guitar", hint: "Amp bite" },
-  { label: "Bass", hint: "Low groove" },
-  { label: "Acoustic Guitar", hint: "Wooden strum" },
-  { label: "Vocals", hint: "Lead voice" }
+  { label: "Snare" },
+  { label: "Kick" },
+  { label: "Rack Tom" },
+  { label: "Floor Tom" },
+  { label: "Hi-Hat" },
+  { label: "Crash Cymbal" },
+  { label: "Ride Cymbal" },
+  { label: "Electric Guitar" },
+  { label: "Bass" },
+  { label: "Acoustic Guitar" },
+  { label: "Vocals" }
 ];
 
 export const effectOptions = [
-  { label: "Reverb", hint: "Wide room" },
-  { label: "Delay", hint: "Echo trail" },
-  { label: "Flanger", hint: "Jet sweep" },
-  { label: "Chorus", hint: "Stereo bloom" },
-  { label: "Compression", hint: "Tight glue" },
-  { label: "EQ", hint: "Tone shape" }
+  { label: "Reverb" },
+  { label: "Delay" },
+  { label: "Flanger" },
+  { label: "Chorus" },
+  { label: "Compression" },
+  { label: "EQ" }
 ];
 
 export const dailyChallenge = {
