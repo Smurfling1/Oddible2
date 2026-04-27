@@ -28,6 +28,7 @@ const FEEDBACK_SOUND_PATHS = {
   correct: "/sounds/correct.mp3",
   incorrect: "/sounds/incorrect.mp3"
 };
+const LAUNCH_DATE = new Date("2026-04-27T00:00:00");
 const PREMIUM_STORAGE_KEY = "oddible_premium";
 const PREMIUM_STREAK_STORAGE_KEY = "oddible-premium-streak-progress";
 const INITIAL_PREMIUM_ROUND_KEY = "premium-initial";
@@ -36,6 +37,26 @@ const STREAK_OUTCOMES = {
   lost: "lost",
   won: "won"
 };
+
+function getLaunchDayNumber(today = new Date()) {
+  const millisecondsPerDay = 1000 * 60 * 60 * 24;
+  const launchDay = new Date(LAUNCH_DATE);
+  const currentDay = new Date(today);
+
+  launchDay.setHours(0, 0, 0, 0);
+  currentDay.setHours(0, 0, 0, 0);
+
+  return Math.max(
+    Math.floor((currentDay.getTime() - launchDay.getTime()) / millisecondsPerDay) + 1,
+    1
+  );
+}
+
+function getLaunchDayLabel(today = new Date()) {
+  const dayNumber = getLaunchDayNumber(today);
+
+  return dayNumber === 1 ? "DAY 1 LAUNCH!" : `DAY ${dayNumber}`;
+}
 
 function getTimeUntilNextMidnight(now = new Date()) {
   const nextMidnight = new Date(now);
@@ -1119,6 +1140,8 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
     maxAttempts: challenge.maxAttempts,
     premiumNotice
   });
+  const launchDayNumber = getLaunchDayNumber();
+  const launchDayLabel = getLaunchDayLabel();
 
   return (
     <div className="relative isolate overflow-hidden">
@@ -1135,11 +1158,11 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/80 px-3 py-1.5 shadow-soft backdrop-blur sm:gap-3 sm:px-4 sm:py-2">
               <span className="font-mono text-[11px] uppercase tracking-[0.32em] text-slate-500">
-                Daily Mix #{challenge.id}
+                Daily Mix #{launchDayNumber}
               </span>
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-strong)]" />
               <span className="text-xs font-semibold text-slate-700 sm:text-sm">
-                {isPremiumMode ? "Unlimited Mode" : "Prototype Session"}
+                {isPremiumMode ? "Unlimited Mode" : launchDayLabel}
               </span>
             </div>
 
@@ -1163,6 +1186,9 @@ export function SoundWordleApp({ challenge, instruments, effects }) {
           </h1>
           <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.32em] text-slate-500 sm:text-xs sm:tracking-[0.36em]">
             {challenge.subtitle}
+          </p>
+          <p className="mt-2 text-[11px] tracking-[0.14em] text-slate-500/80 sm:text-xs">
+            By Anton
           </p>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 sm:text-base">
             {challenge.tagline}
