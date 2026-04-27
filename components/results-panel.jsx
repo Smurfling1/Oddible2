@@ -1,6 +1,13 @@
 import { cn } from "@/lib/cn";
 
-export function ResultsPanel({ answer, attempts, attemptsRemaining, gameState, maxAttempts }) {
+export function ResultsPanel({
+  answer,
+  attempts,
+  attemptsRemaining,
+  gameState,
+  isPremiumMode,
+  maxAttempts
+}) {
   const attemptsToShow = [...attempts].reverse();
 
   return (
@@ -12,18 +19,22 @@ export function ResultsPanel({ answer, attempts, attemptsRemaining, gameState, m
             Session Tape
           </h3>
           <p className="mt-1.5 text-sm leading-5 text-slate-600 sm:mt-2 sm:leading-6">
-            Every submitted guess gets logged here for today's ODDIBLE challenge.
+            {isPremiumMode
+              ? "Every submitted guess gets logged here for your current unlimited round."
+              : "Every submitted guess gets logged here for today's ODDIBLE challenge."}
           </p>
         </div>
 
         <div className="rounded-full border border-slate-200/80 bg-slate-50/80 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500 sm:px-4 sm:py-2 sm:text-xs sm:tracking-[0.24em]">
-          {attempts.length}/{maxAttempts} Today
+          {attempts.length}/{maxAttempts} {isPremiumMode ? "Round" : "Today"}
         </div>
       </div>
 
       {attemptsToShow.length === 0 ? (
         <div className="mt-4 rounded-[20px] border border-dashed border-slate-200/80 bg-slate-50/70 px-4 py-4 text-sm leading-5 text-slate-600 sm:mt-5">
-          No guesses yet. Build a combo above and submit it to start today's tape.
+          {isPremiumMode
+            ? "No guesses yet. Build a combo above and submit it to start this unlimited round."
+            : "No guesses yet. Build a combo above and submit it to start today's tape."}
         </div>
       ) : (
         <div className="mt-4 space-y-2.5 sm:mt-5 sm:space-y-3">
@@ -70,9 +81,13 @@ export function ResultsPanel({ answer, attempts, attemptsRemaining, gameState, m
       )}
 
       <div className="mt-4 rounded-[20px] border border-slate-200/80 bg-slate-950 px-4 py-3.5 text-white sm:mt-5">
-        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/70 sm:text-[11px] sm:tracking-[0.28em]">Daily Status</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-white/70 sm:text-[11px] sm:tracking-[0.28em]">
+          {isPremiumMode ? "Unlimited Status" : "Daily Status"}
+        </p>
         <p className="mt-1.5 text-base font-semibold sm:mt-2 sm:text-lg">
-          {gameState === "won"
+          {isPremiumMode
+            ? `Attempt ${attempts.length + 1} of ${maxAttempts}. ${attemptsRemaining} attempts remaining in this round.`
+            : gameState === "won"
             ? "You solved today's ODDIBLE."
             : gameState === "lost"
               ? `Locked until tomorrow. Today's sound was ${answer.instrument} + ${answer.effect}.`

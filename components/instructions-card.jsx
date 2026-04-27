@@ -12,7 +12,7 @@ const legendClasses = {
   selected: "border-slate-900 bg-slate-900 text-white"
 };
 
-export function InstructionsCard({ gameState, maxAttempts }) {
+export function InstructionsCard({ gameState, isPremiumMode, maxAttempts }) {
   return (
     <aside className="grid gap-4">
       <section className="glass-panel rounded-[24px] p-4 sm:rounded-[28px] sm:p-5">
@@ -33,14 +33,20 @@ export function InstructionsCard({ gameState, maxAttempts }) {
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--cool)] font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-900 sm:h-8 sm:w-8 sm:text-xs sm:tracking-[0.16em]">
               2
             </span>
-            <p>Submit your guess to reveal whether each selected tile is correct or missed. You get {maxAttempts} attempts each day.</p>
+            <p>
+              Submit your guess to reveal whether each selected tile is correct or missed. You get{" "}
+              {maxAttempts} {isPremiumMode ? "attempts per round." : "attempts each day."}
+            </p>
           </div>
 
           <div className="flex gap-2.5 rounded-[20px] border border-slate-200/80 bg-slate-50/80 px-3.5 py-3 sm:gap-3 sm:rounded-[22px] sm:px-4">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--warm)] font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-900 sm:h-8 sm:w-8 sm:text-xs sm:tracking-[0.16em]">
               3
             </span>
-            <p>Use the results panel to review today's guesses. Reset only clears your current unsubmitted picks.</p>
+            <p>
+              Use the results panel to review {isPremiumMode ? "this round's" : "today's"} guesses.
+              Reset only clears your current unsubmitted picks.
+            </p>
           </div>
         </div>
       </section>
@@ -66,7 +72,9 @@ export function InstructionsCard({ gameState, maxAttempts }) {
         </div>
 
         <div className="mt-4 rounded-[20px] border border-dashed border-slate-200/80 bg-slate-50/70 px-4 py-3.5 text-sm leading-5 text-slate-600 sm:mt-5 sm:leading-6">
-          {gameState === "won"
+          {isPremiumMode
+            ? `Unlimited mode keeps rolling. Each sound gives you ${maxAttempts} attempts before the next round loads.`
+            : gameState === "won"
             ? "Today's ODDIBLE is solved. Next puzzle available tomorrow."
             : gameState === "lost"
               ? "You've finished today's ODDIBLE. Come back tomorrow for a new sound."

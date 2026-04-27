@@ -1,3 +1,4 @@
+// Updated instrument list - guitars and bass removed, piano added
 export const instrumentOptions = [
   { label: "Snare" },
   { label: "Kick" },
@@ -6,9 +7,7 @@ export const instrumentOptions = [
   { label: "Hi-Hat" },
   { label: "Crash Cymbal" },
   { label: "Ride Cymbal" },
-  { label: "Electric Guitar" },
-  { label: "Bass" },
-  { label: "Acoustic Guitar" },
+  { label: "Piano" },
   { label: "Vocals" }
 ];
 

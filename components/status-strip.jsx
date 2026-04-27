@@ -23,26 +23,27 @@ export function StatusStrip({
   countdown,
   currentStreak,
   gameState,
+  isPremiumMode,
   maxAttempts
 }) {
   const cards = [
     {
       label: "Attempts Left",
       note:
-        gameState === "playing"
+        isPremiumMode || gameState === "playing"
           ? `Attempt ${attemptsUsed + 1} of ${maxAttempts}`
           : `Used ${attemptsUsed} of ${maxAttempts}`,
       value: String(attemptsRemaining)
     },
     {
       label: "Challenge Mode",
-      note: `${comboLabel} puzzle resets daily`,
-      value: "Daily"
+      note: isPremiumMode ? "Unlimited rounds with instant refresh" : `${comboLabel} puzzle resets daily`,
+      value: isPremiumMode ? "Unlimited" : "Daily"
     },
     {
       label: "Status",
-      note: statusMeta[gameState].note,
-      value: statusMeta[gameState].value
+      note: isPremiumMode ? "Unlimited play is active" : statusMeta[gameState].note,
+      value: isPremiumMode ? "Open" : statusMeta[gameState].value
     }
   ];
 
@@ -88,7 +89,9 @@ export function StatusStrip({
       </div>
 
       <p className="mt-3 text-center font-mono text-[10px] uppercase tracking-[0.22em] text-slate-500 sm:text-[11px] sm:tracking-[0.24em]">
-        {gameState === "won" || gameState === "lost" ? "Come back in" : "Next puzzle in"}: {countdown}
+        {isPremiumMode
+          ? `Daily puzzle refreshes in: ${countdown}`
+          : `${gameState === "won" || gameState === "lost" ? "Come back in" : "Next puzzle in"}: ${countdown}`}
       </p>
     </div>
   );
